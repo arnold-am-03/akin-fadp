@@ -1,0 +1,6 @@
+flask>=3.0
+gunicorn>=21.2
+dropbox>=11.36
+pymupdf>=1.24
+genanki>=0.13
+google-genai>=0.3

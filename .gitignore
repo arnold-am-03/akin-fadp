@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.apkg
+/tmp/
+fadp_pipeline/
+.env
+.venv/

@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: fadp-anki
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # 1 worker: el estado de la corrida vive en memoria del proceso.
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120
+    envVars:
+      - key: DBX_APP_KEY
+        sync: false
+      - key: DBX_APP_SECRET
+        sync: false
+      - key: DBX_REFRESH_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash-lite

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fichero FADP — actualizar mazo</title>
+<style>
+  :root{
+    --paper:#eceef3; --surface:#ffffff; --ink:#16223c; --muted:#5d6b85;
+    --line:#d9dee8; --seal:#7b2d40; --seal-bright:#9a3850; --ok:#1f7a4d;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    --serif:"Iowan Old Style",Palatino,Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+       line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 64px}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;
+         gap:16px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:14px}
+  .brand{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:.2px}
+  .brand small{display:block;font-family:var(--sans);font-size:12px;font-weight:500;
+               letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+  .acct{font-size:13px;color:var(--muted)}
+  .acct b{color:var(--ink);font-weight:600}
+
+  /* hero */
+  .hero{display:flex;gap:28px;align-items:flex-end;flex-wrap:wrap;margin:28px 0 8px}
+  .count{font-family:var(--serif);font-size:72px;line-height:.9;font-weight:600;
+         font-variant-numeric:tabular-nums}
+  .count span{font-size:15px;font-family:var(--sans);font-weight:500;color:var(--muted);
+              display:block;letter-spacing:.04em;margin-top:8px}
+  .meta{font-size:13.5px;color:var(--muted);padding-bottom:6px}
+  .meta b{color:var(--ink);font-weight:600}
+
+  /* index dividers (signature) */
+  .index{margin:26px 0 8px}
+  .index h2{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+            font-weight:600;margin:0 0 10px}
+  .divider{display:flex;align-items:center;gap:0;border-top:1px solid var(--line);
+           padding:9px 0 9px 0}
+  .divider:last-child{border-bottom:1px solid var(--line)}
+  .tab{flex:0 0 6px;align-self:stretch;background:var(--seal);border-radius:2px;margin-right:14px;
+       opacity:.85}
+  .curso{flex:1;font-size:14.5px;font-weight:500}
+  .n{font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .empty{color:var(--muted);font-size:14px;padding:14px 0;border-top:1px solid var(--line)}
+
+  /* action */
+  .actions{display:flex;gap:12px;flex-wrap:wrap;margin:30px 0 0}
+  button,.dl{font-family:var(--sans);font-size:14.5px;font-weight:600;border-radius:8px;
+             padding:12px 20px;cursor:pointer;border:1px solid transparent;text-decoration:none}
+  button{background:var(--seal);color:#fff}
+  button:hover{background:var(--seal-bright)}
+  button:disabled{background:#b9b2b5;cursor:not-allowed}
+  .dl{background:var(--surface);color:var(--ink);border-color:var(--line)}
+  .dl:hover{border-color:var(--ink)}
+
+  /* console */
+  .console{margin-top:24px;background:#0f1626;border-radius:10px;overflow:hidden;
+           display:none}
+  .console.show{display:block}
+  .console .bar{display:flex;align-items:center;gap:8px;padding:9px 14px;
+                border-bottom:1px solid #1e2942;color:#9fb0d0;font-size:12px;
+                letter-spacing:.08em;text-transform:uppercase}
+  .dot{width:9px;height:9px;border-radius:50%;background:#46507a;flex:0 0 auto}
+  .dot.live{background:#f0a93b;animation:p 1s infinite}
+  .dot.done{background:var(--ok)}
+  .dot.err{background:#e0556a}
+  @keyframes p{50%{opacity:.35}}
+  pre{margin:0;padding:14px;max-height:340px;overflow:auto;color:#cdd7ee;
+      font-family:var(--mono);font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+
+  .banner{margin:18px 0;padding:12px 16px;border-radius:8px;font-size:13.5px;
+          background:#fcebe9;color:#7b2d40;border:1px solid #f1c6c2}
+  footer{margin-top:40px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (max-width:480px){.count{font-size:56px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">Fichero FADP
+      <small>Mazo maestro · práctica de recuperación</small>
+    </div>
+    <div class="acct">
+      {% if r.conectado %}Dropbox: <b>{{ r.cuenta }}</b>{% else %}<b>Sin conexión a Dropbox</b>{% endif %}
+    </div>
+  </header>
+
+  {% if not r.conectado %}
+    <div class="banner">No se pudo leer el estado desde Dropbox. Revisa las variables de
+      entorno (token o refresh token). Detalle: {{ r.error }}</div>
+  {% endif %}
+
+  <section class="hero">
+    <div class="count">{{ r.cards }}<span>tarjetas en el mazo</span></div>
+    <div class="meta">
+      <b>{{ r.archivos }}</b> clases procesadas<br>
+      Última actualización: <b>{{ r.actualizado or "—" }}</b>
+    </div>
+  </section>
+
+  <section class="index">
+    <h2>Por curso</h2>
+    {% for curso, n in r.por_curso %}
+      <div class="divider"><span class="tab"></span><span class="curso">{{ curso }}</span><span class="n">{{ n }}</span></div>
+    {% else %}
+      <div class="empty">Aún no hay tarjetas. Pulsa “Procesar actualizaciones” para generar el mazo.</div>
+    {% endfor %}
+  </section>
+
+  <section class="actions">
+    <button id="run">Procesar actualizaciones</button>
+    <a class="dl" href="/descargar">Descargar mazo (.apkg)</a>
+  </section>
+
+  <section class="console" id="console">
+    <div class="bar"><span class="dot" id="dot"></span><span id="state">en espera</span></div>
+    <pre id="log"></pre>
+  </section>
+
+  <footer>Detecta solo las clases nuevas y actualiza el mazo en Dropbox. Reimporta el .apkg en Anki cuando termine.</footer>
+</div>
+
+<script>
+const btn = document.getElementById("run");
+const consoleEl = document.getElementById("console");
+const logEl = document.getElementById("log");
+const dot = document.getElementById("dot");
+const stateEl = document.getElementById("state");
+let timer = null;
+
+function render(s){
+  consoleEl.classList.add("show");
+  logEl.textContent = (s.log || []).join("\n");
+  logEl.scrollTop = logEl.scrollHeight;
+  if (s.running){
+    dot.className = "dot live"; stateEl.textContent = "procesando…";
+    btn.disabled = true; btn.textContent = "Procesando…";
+  } else {
+    btn.disabled = false; btn.textContent = "Procesar actualizaciones";
+    if (s.error){ dot.className = "dot err"; stateEl.textContent = "error"; }
+    else { dot.className = "dot done"; stateEl.textContent = "listo"; }
+    if (timer){ clearInterval(timer); timer = null; }
+    if (s.result && !s.error){ setTimeout(()=>location.reload(), 1500); }
+  }
+}
+
+async function poll(){
+  try { const r = await fetch("/estado"); render(await r.json()); }
+  catch(e){ /* la instancia puede estar despertando; reintenta en el próximo tick */ }
+}
+
+btn.addEventListener("click", async ()=>{
+  btn.disabled = true; btn.textContent = "Iniciando…";
+  await fetch("/procesar", {method:"POST"});
+  if (!timer) timer = setInterval(poll, 1800);
+  poll();
+});
+</script>
+</body>
+</html>
