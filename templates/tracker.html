@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FADP · Tracker</title>
+<style>
+:root{
+  --bg:#f0f2f7; --surface:#fff; --ink:#111827; --muted:#6b7280;
+  --line:#e5e7eb; --accent:#7b2d40; --accent2:#b45309;
+  --ok:#15803d; --ok-bg:#dcfce7; --pend:#b45309; --pend-bg:#fef3c7;
+  --prog:#1d4ed8; --prog-bg:#dbeafe;
+  --sans:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --serif:"Iowan Old Style",Palatino,Georgia,serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+     font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* ── NAV ── */
+nav{background:var(--surface);border-bottom:1px solid var(--line);
+    padding:0 24px;display:flex;align-items:center;gap:0;height:52px;position:sticky;top:0;z-index:100}
+.nav-brand{font-family:var(--serif);font-size:17px;font-weight:600;
+           color:var(--accent);margin-right:28px;text-decoration:none}
+.nav-link{padding:0 14px;height:52px;display:flex;align-items:center;
+          color:var(--muted);text-decoration:none;font-size:13.5px;font-weight:500;
+          border-bottom:2px solid transparent;transition:color .15s}
+.nav-link:hover{color:var(--ink)}
+.nav-link.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── TABS ── */
+.tab-bar{display:flex;gap:4px;padding:20px 24px 0;background:var(--bg)}
+.tab-btn{padding:8px 18px;border-radius:8px 8px 0 0;border:1px solid var(--line);
+         border-bottom:none;background:var(--bg);color:var(--muted);cursor:pointer;
+         font-size:13.5px;font-weight:500;transition:background .15s}
+.tab-btn.active{background:var(--surface);color:var(--ink);font-weight:600}
+.tab-pane{display:none;padding:24px}
+.tab-pane.active{display:block}
+
+/* ── DASHBOARD ── */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.kpi{background:var(--surface);border-radius:10px;padding:18px 20px;
+     border:1px solid var(--line)}
+.kpi .val{font-family:var(--serif);font-size:38px;font-weight:600;line-height:1}
+.kpi .lbl{font-size:12px;color:var(--muted);margin-top:6px;letter-spacing:.04em;text-transform:uppercase}
+.progress-bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .6s}
+
+.section-title{font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+               color:var(--muted);font-weight:600;margin:24px 0 12px}
+
+/* Rezagados */
+.rezagados{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.rez-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+          padding:14px 16px}
+.rez-card .curso-name{font-weight:600;font-size:13.5px;margin-bottom:8px;
+                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rez-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.rez-fill{height:100%;background:var(--accent);border-radius:3px}
+.rez-meta{font-size:12px;color:var(--muted)}
+
+/* Actividad semanal */
+.activity-row{display:flex;gap:8px;align-items:flex-end;height:60px}
+.act-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.act-bar-wrap{flex:1;display:flex;align-items:flex-end;width:100%}
+.act-bar{width:100%;background:var(--accent);border-radius:3px 3px 0 0;
+         min-height:3px;transition:height .4s;opacity:.85}
+.act-day{font-size:10px;color:var(--muted);font-family:var(--mono)}
+
+/* ── BACKLOG ── */
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.search-box{flex:1;min-width:180px;padding:7px 12px;border:1px solid var(--line);
+            border-radius:8px;font-size:13.5px;background:var(--surface)}
+.filter-select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;
+               font-size:13px;background:var(--surface);color:var(--ink)}
+
+/* Kanban */
+.kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:700px){.kanban{grid-template-columns:1fr}}
+.kanban-col{background:var(--line);border-radius:10px;padding:12px}
+.kanban-header{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+               color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.col-count{background:var(--surface);color:var(--ink);border-radius:10px;
+           padding:1px 7px;font-size:11px;font-weight:700}
+
+.card{background:var(--surface);border-radius:8px;padding:12px 14px;margin-bottom:8px;
+      border:1px solid var(--line);cursor:pointer;transition:box-shadow .15s}
+.card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.card-label{font-weight:600;font-size:13px;margin-bottom:4px}
+.card-curso{font-size:12px;color:var(--muted);margin-bottom:8px}
+.card-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500}
+.badge-clase{background:#ede9fe;color:#5b21b6}
+.badge-lectura{background:#fce7f3;color:#9d174d}
+.prio-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* Lista (toggle) */
+.list-view{display:none}
+.list-view.show{display:block}
+.list-row{display:flex;align-items:center;gap:12px;padding:10px 14px;
+          background:var(--surface);border-bottom:1px solid var(--line);
+          cursor:pointer;transition:background .1s}
+.list-row:hover{background:#f9fafb}
+.list-row:first-child{border-radius:10px 10px 0 0}
+.list-row:last-child{border-bottom:none;border-radius:0 0 10px 10px}
+.list-check{width:18px;height:18px;border-radius:4px;border:2px solid var(--line);
+            flex-shrink:0;display:flex;align-items:center;justify-content:center;
+            transition:background .15s,border-color .15s}
+.list-check.done{background:var(--ok);border-color:var(--ok);color:#fff}
+.list-label{flex:1;font-size:13.5px;font-weight:500}
+.list-sesion{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.estado-badge{font-size:11px;padding:2px 9px;border-radius:10px;font-weight:500;white-space:nowrap}
+.estado-pendiente{background:var(--pend-bg);color:var(--pend)}
+.estado-en_progreso{background:var(--prog-bg);color:var(--prog)}
+.estado-concluido{background:var(--ok-bg);color:var(--ok)}
+
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;
+          display:none;align-items:center;justify-content:center;padding:16px}
+.modal-bg.show{display:flex}
+.modal{background:var(--surface);border-radius:14px;width:100%;max-width:680px;
+       max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;
+            padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;
+            background:var(--surface)}
+.modal-title{font-weight:700;font-size:15px}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);
+             line-height:1;padding:4px}
+.modal-body{padding:20px 22px}
+
+.preview-img{width:100%;border-radius:6px;border:1px solid var(--line);margin-bottom:10px;display:block}
+.preview-loading{color:var(--muted);font-size:13px;padding:20px 0;text-align:center}
+
+.form-row{margin-bottom:14px}
+.form-row label{display:block;font-size:12px;font-weight:600;color:var(--muted);
+                text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.form-input{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;
+            font-size:13.5px}
+.form-select{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;
+             font-size:13.5px;background:var(--surface)}
+
+.prio-slider{width:100%;accent-color:var(--accent)}
+
+.action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.btn{padding:9px 18px;border-radius:8px;font-size:13.5px;font-weight:600;
+     cursor:pointer;border:1px solid transparent;transition:opacity .15s}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover:not(:disabled){opacity:.88}
+.btn-secondary{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn-ok{background:#15803d;color:#fff}
+.btn-back{background:#b45309;color:#fff}
+
+/* Consola de lecturas */
+.lec-console{background:#0f1626;border-radius:8px;overflow:hidden;
+             display:none;margin-top:14px}
+.lec-console.show{display:block}
+.lec-bar{padding:8px 14px;color:#9fb0d0;font-size:12px;
+         border-bottom:1px solid #1e2942;display:flex;align-items:center;gap:8px}
+.lec-dot{width:8px;height:8px;border-radius:50%;background:#46507a;flex:0 0 auto}
+.lec-dot.live{background:#f0a93b;animation:pulse 1s infinite}
+.lec-dot.done{background:var(--ok)}
+.lec-dot.err{background:#e0556a}
+@keyframes pulse{50%{opacity:.3}}
+.lec-log{margin:0;padding:12px 14px;max-height:220px;overflow:auto;
+         color:#cdd7ee;font-family:var(--mono);font-size:12px;line-height:1.6;
+         white-space:pre-wrap;word-break:break-word}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#111827;color:#fff;
+       padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;
+       transition:opacity .3s;z-index:300;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="/">Fichero FADP</a>
+  <a class="nav-link" href="/">Mazo</a>
+  <a class="nav-link active" href="/tracker">Tracker</a>
+</nav>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('backlog')">Backlog</button>
+  <button class="tab-btn" onclick="switchTab('pendientes')">Pendientes</button>
+</div>
+
+<!-- ═══════════════════════ DASHBOARD ═══════════════════════ -->
+<div class="tab-pane active" id="tab-dashboard">
+
+  {% if stats.error is defined %}
+    <div style="color:var(--accent);padding:20px">Error al cargar: {{ stats.error }}</div>
+  {% else %}
+  <div class="dash-grid">
+    <div class="kpi">
+      <div class="val">{{ stats.total }}</div>
+      <div class="lbl">Sesiones totales</div>
+    </div>
+    <div class="kpi">
+      <div class="val" style="color:var(--ok)">{{ stats.concluidas }}</div>
+      <div class="lbl">Concluidas</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:{{ stats.pct }}%"></div></div>
+    </div>
+    <div class="kpi">
+      <div class="val" style="color:var(--pend)">{{ stats.pendientes }}</div>
+      <div class="lbl">Pendientes</div>
+    </div>
+    <div class="kpi">
+      <div class="val" style="color:var(--accent)">{{ stats.hoy }}</div>
+      <div class="lbl">Cerradas hoy</div>
+    </div>
+  </div>
+
+  <div class="section-title">Actividad — últimos 7 días</div>
+  {% set max_act = stats.actividad_7.values() | max if stats.actividad_7 else 1 %}
+  {% set max_act = [max_act, 1] | max %}
+  <div class="activity-row">
+    {% for fecha, n in stats.actividad_7.items() | sort %}
+    <div class="act-col">
+      <div class="act-bar-wrap">
+        <div class="act-bar" style="height:{{ [(n / max_act * 48), 3] | max }}px" title="{{ n }} sesiones"></div>
+      </div>
+      <span class="act-day">{{ fecha[-5:] }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="section-title">Cursos más rezagados</div>
+  <div class="rezagados">
+    {% for curso, pendientes, total, concluidas in stats.rezagados %}
+    <div class="rez-card">
+      <div class="rez-card .curso-name" title="{{ curso }}">{{ curso }}</div>
+      <div class="rez-bar">
+        <div class="rez-fill" style="width:{{ (concluidas / total * 100) | int }}%"></div>
+      </div>
+      <div class="rez-meta">{{ pendientes }} pendientes de {{ total }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- ═══════════════════════ BACKLOG (kanban) ════════════════ -->
+<div class="tab-pane" id="tab-backlog">
+  <div class="toolbar">
+    <input class="search-box" id="search" placeholder="Buscar curso o sesión…" oninput="filtrar()">
+    <select class="filter-select" id="filter-curso" onchange="filtrar()">
+      <option value="">Todos los cursos</option>
+      {% for curso in items | map(attribute='curso') | unique | sort %}
+      <option value="{{ curso }}">{{ curso }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-secondary" onclick="toggleVista()" id="vista-btn">Vista lista</button>
+  </div>
+
+  <!-- Kanban -->
+  <div class="kanban" id="kanban-view">
+    {% for col_id, col_label in [('pendiente','Pendiente'),('en_progreso','En progreso'),('concluido','Concluido')] %}
+    <div class="kanban-col" id="col-{{ col_id }}">
+      <div class="kanban-header">
+        {{ col_label }}
+        <span class="col-count" id="cnt-{{ col_id }}">
+          {{ items | selectattr('estado','eq',col_id) | list | length }}
+        </span>
+      </div>
+      {% for item in items if item.estado == col_id %}
+      {% set pct = item.prioridad %}
+      {% set pc = "#15803d" if pct >= 70 else ("#b45309" if pct >= 40 else "#6b7280") %}
+      <div class="card" onclick="abrirModal({{ item | tojson }})"
+           data-id="{{ item.id }}" data-curso="{{ item.curso }}" data-estado="{{ item.estado }}">
+        <div class="card-label">{{ item.curso }} · {{ item.sesion }}</div>
+        <div class="card-curso" style="font-size:11px">{{ item.curso }}</div>
+        <div class="card-meta">
+          {% if item.n_clase %}<span class="badge badge-clase">{{ item.n_clase }} clase</span>{% endif %}
+          {% if item.n_lectura %}<span class="badge badge-lectura">{{ item.n_lectura }} lectura</span>{% endif %}
+          <span class="prio-dot" style="background:{{ pc }}" title="Prioridad {{ item.prioridad }}"></span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Lista -->
+  <div class="list-view" id="list-view">
+    {% for item in items %}
+    <div class="list-row" data-curso="{{ item.curso }}" data-estado="{{ item.estado }}"
+         onclick="abrirModal({{ item | tojson }})">
+      <div class="list-check {{ 'done' if item.estado == 'concluido' else '' }}" id="chk-{{ item.id }}">
+        {% if item.estado == 'concluido' %}✓{% endif %}
+      </div>
+      <span class="list-label">{{ item.curso }}</span>
+      <span class="list-sesion">{{ item.sesion }}</span>
+      <span class="estado-badge estado-{{ item.estado }}">{{ item.estado.replace('_',' ') }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ═══════════════════════ PENDIENTES (lista rápida) ════════ -->
+<div class="tab-pane" id="tab-pendientes">
+  <p style="color:var(--muted);font-size:13px;margin-bottom:16px">
+    Sesiones pendientes o en progreso, ordenadas por prioridad. Haz clic para gestionar.
+  </p>
+  {% for item in items if item.estado != 'concluido' %}
+  <div class="list-row" onclick="abrirModal({{ item | tojson }})">
+    <div class="list-check"></div>
+    <span class="list-label">{{ item.curso }}</span>
+    <span class="list-sesion">{{ item.sesion }}</span>
+    <span class="estado-badge estado-{{ item.estado }}">{{ item.estado.replace('_',' ') }}</span>
+  </div>
+  {% else %}
+  <div style="color:var(--ok);padding:24px;text-align:center;font-size:15px">
+    🎉 ¡Todo al día! No hay sesiones pendientes.
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ═══════════════════════ MODAL ═══════════════════════════ -->
+<div class="modal-bg" id="modal-bg" onclick="cerrarModal(event)">
+<div class="modal" id="modal">
+  <div class="modal-head">
+    <span class="modal-title" id="modal-title">—</span>
+    <button class="modal-close" onclick="cerrarModal(null)">✕</button>
+  </div>
+  <div class="modal-body">
+
+    <!-- Estado y prioridad -->
+    <div class="form-row">
+      <label>Estado</label>
+      <select class="form-select" id="m-estado">
+        <option value="pendiente">Pendiente</option>
+        <option value="en_progreso">En progreso</option>
+        <option value="concluido">Concluido</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Prioridad — <span id="prio-val">50</span></label>
+      <input type="range" min="0" max="100" class="prio-slider" id="m-prio"
+             oninput="document.getElementById('prio-val').textContent=this.value">
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-primary" id="btn-guardar" onclick="guardarEstado()">Guardar cambios</button>
+    </div>
+
+    <!-- Previsualización de archivos -->
+    <div id="archivos-section" style="margin-top:22px"></div>
+
+    <!-- Generador de lecturas -->
+    <div id="lec-section" style="display:none;margin-top:22px">
+      <div class="section-title" style="margin-top:0">Generar tarjetas de lectura</div>
+      <div class="form-row">
+        <label>Archivo</label>
+        <select class="form-select" id="lec-archivo"></select>
+      </div>
+      <div class="form-row">
+        <label>Nombre para el submazo</label>
+        <input class="form-input" id="lec-nombre" placeholder="ej. Weber — Dominación">
+      </div>
+      <div class="action-row">
+        <button class="btn btn-primary" id="btn-lec" onclick="generarLectura()">Generar tarjetas</button>
+        <a class="btn btn-secondary" href="/lecturas/descargar">Descargar mazo lecturas</a>
+      </div>
+      <div class="lec-console" id="lec-console">
+        <div class="lec-bar"><span class="lec-dot" id="lec-dot"></span><span id="lec-state">en espera</span></div>
+        <pre class="lec-log" id="lec-log"></pre>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Datos ──────────────────────────────────────────────────────────────────
+const ITEMS = {{ items | tojson }};
+let current = null;
+let lecTimer = null;
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function switchTab(id){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', ['dashboard','backlog','pendientes'][i]===id);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+// ── Filtro / búsqueda ──────────────────────────────────────────────────────
+function filtrar(){
+  const q = document.getElementById('search').value.toLowerCase();
+  const c = document.getElementById('filter-curso').value;
+  document.querySelectorAll('.card, .list-row').forEach(el=>{
+    const curso = (el.dataset.curso||'').toLowerCase();
+    const txt   = el.textContent.toLowerCase();
+    const ok = (!q || txt.includes(q)) && (!c || el.dataset.curso===c);
+    el.style.display = ok ? '' : 'none';
+  });
+}
+
+// ── Toggle kanban / lista ──────────────────────────────────────────────────
+let listaActiva = false;
+function toggleVista(){
+  listaActiva = !listaActiva;
+  document.getElementById('kanban-view').style.display = listaActiva ? 'none' : '';
+  document.getElementById('list-view').classList.toggle('show', listaActiva);
+  document.getElementById('vista-btn').textContent = listaActiva ? 'Vista kanban' : 'Vista lista';
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function abrirModal(item){
+  current = item;
+  document.getElementById('modal-title').textContent = `${item.curso} · ${item.sesion}`;
+  document.getElementById('m-estado').value = item.estado;
+  document.getElementById('m-prio').value   = item.prioridad;
+  document.getElementById('prio-val').textContent = item.prioridad;
+
+  // archivos
+  const sec = document.getElementById('archivos-section');
+  sec.innerHTML = '';
+  const todos = [...(item.archivos_clase||[]), ...(item.archivos_lectura||[])];
+  if(todos.length){
+    const t = document.createElement('div');
+    t.className = 'section-title'; t.style.marginTop='0';
+    t.textContent = 'Archivos'; sec.appendChild(t);
+    todos.forEach(path=>{
+      const row = document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px;';
+      const tipo = path.toLowerCase().includes('/clase_') ||
+                   /\/clase[_\s]/i.test(path) ? 'clase':'lectura';
+      row.innerHTML = `
+        <span class="badge badge-${tipo}">${tipo}</span>
+        <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="${path}">${path.split('/').pop()}</span>
+        <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px"
+                onclick="previsualizarPDF('${path}',this)">Ver</button>`;
+      sec.appendChild(row);
+      // contenedor de imágenes oculto
+      const imgs = document.createElement('div');
+      imgs.id = 'prev-'+btoa(path).slice(0,20).replace(/[^a-z0-9]/gi,'');
+      sec.appendChild(imgs);
+    });
+  }
+
+  // sección lecturas
+  const lecSec = document.getElementById('lec-section');
+  const lecturas = item.archivos_lectura||[];
+  if(lecturas.length){
+    lecSec.style.display='';
+    const sel = document.getElementById('lec-archivo');
+    sel.innerHTML = lecturas.map(p=>`<option value="${p}">${p.split('/').pop()}</option>`).join('');
+    document.getElementById('lec-nombre').value='';
+    document.getElementById('lec-console').classList.remove('show');
+    document.getElementById('lec-log').textContent='';
+    document.getElementById('btn-lec').disabled=false;
+  } else {
+    lecSec.style.display='none';
+  }
+
+  document.getElementById('modal-bg').classList.add('show');
+}
+
+function cerrarModal(e){
+  if(e && e.target !== document.getElementById('modal-bg')) return;
+  document.getElementById('modal-bg').classList.remove('show');
+  current = null;
+  if(lecTimer){clearInterval(lecTimer);lecTimer=null;}
+}
+
+// ── Previsualizar PDF ──────────────────────────────────────────────────────
+async function previsualizarPDF(path, btn){
+  const id = 'prev-'+btoa(path).slice(0,20).replace(/[^a-z0-9]/gi,'');
+  const cont = document.getElementById(id);
+  if(!cont) return;
+  if(cont.dataset.loaded){ cont.style.display = cont.style.display==='none'?'':'none'; return; }
+  cont.innerHTML='<div class="preview-loading">Cargando previsualización…</div>';
+  cont.style.display='';
+  btn.disabled=true;
+  try{
+    const r = await fetch('/tracker/preview?path='+encodeURIComponent(path));
+    const data = await r.json();
+    if(data.imgs){
+      cont.innerHTML = data.imgs.map(b=>
+        `<img class="preview-img" src="data:image/png;base64,${b}">`).join('');
+      cont.dataset.loaded='1';
+    } else {
+      cont.innerHTML=`<div class="preview-loading" style="color:red">Error: ${data.error}</div>`;
+    }
+  }catch(e){ cont.innerHTML=`<div class="preview-loading" style="color:red">${e}</div>`; }
+  btn.disabled=false;
+}
+
+// ── Guardar estado / prioridad ─────────────────────────────────────────────
+async function guardarEstado(){
+  if(!current) return;
+  const estado    = document.getElementById('m-estado').value;
+  const prioridad = document.getElementById('m-prio').value;
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    await fetch('/tracker/estado',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({curso:current.curso,sesion:current.sesion,estado})});
+    await fetch('/tracker/prioridad',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({curso:current.curso,sesion:current.sesion,prioridad})});
+    mostrarToast('Guardado ✓');
+    setTimeout(()=>location.reload(),800);
+  }catch(e){ mostrarToast('Error al guardar','error'); }
+  btn.disabled=false; btn.textContent='Guardar cambios';
+}
+
+// ── Generar tarjetas de lectura ────────────────────────────────────────────
+async function generarLectura(){
+  if(!current) return;
+  const path   = document.getElementById('lec-archivo').value;
+  const nombre = document.getElementById('lec-nombre').value.trim();
+  if(!nombre){ mostrarToast('Pon un nombre al submazo primero'); return; }
+  const btn = document.getElementById('btn-lec');
+  btn.disabled=true;
+  document.getElementById('lec-console').classList.add('show');
+  document.getElementById('lec-dot').className='lec-dot live';
+  document.getElementById('lec-state').textContent='procesando…';
+  await fetch('/lecturas/procesar',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({path,curso:current.curso,sesion:current.sesion,nombre})});
+  lecTimer = setInterval(pollLectura,1800);
+}
+
+async function pollLectura(){
+  try{
+    const r = await fetch('/lecturas/estado');
+    const s = await r.json();
+    document.getElementById('lec-log').textContent = (s.log||[]).join('\n');
+    document.getElementById('lec-log').scrollTop=9999;
+    if(!s.running){
+      clearInterval(lecTimer); lecTimer=null;
+      const dot=document.getElementById('lec-dot');
+      const st=document.getElementById('lec-state');
+      if(s.error){dot.className='lec-dot err';st.textContent='error';}
+      else{dot.className='lec-dot done';st.textContent='listo';}
+      document.getElementById('btn-lec').disabled=false;
+    }
+  }catch(e){}
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function mostrarToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+</script>
+</body>
+</html>

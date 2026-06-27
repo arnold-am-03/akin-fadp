@@ -1,41 +1,59 @@
 """
 App web FADP → Anki.
 
-Una página con el estado del mazo y un botón "Procesar actualizaciones" que corre
-el pipeline incremental en segundo plano. El progreso se muestra en vivo.
-
-Render: una sola instancia / un worker (el estado vive en memoria del proceso).
+Render: una sola instancia / un worker.
     gunicorn app:app --workers 1 --threads 4 --timeout 120
 """
 import os
 import threading
 
-from flask import Flask, render_template, jsonify, send_file
+from flask import Flask, render_template, jsonify, request, send_file
 
 import pipeline
+import tracker
+import lecturas
 
 app = Flask(__name__)
 
-# Estado en memoria de la corrida en curso
+# ── Estado en memoria del pipeline de clases ──────────────────────────────── #
 STATUS = {"running": False, "log": [], "result": None, "error": None}
-LOCK = threading.Lock()
+LOCK   = threading.Lock()
+
+# ── Estado en memoria del generador de lecturas ───────────────────────────── #
+LEC_STATUS = {"running": False, "log": [], "result": None, "error": None}
+LEC_LOCK   = threading.Lock()
 
 
-def _log(msg):
-    STATUS["log"].append(msg)
+def _log(msg):      STATUS["log"].append(msg)
+def _lec_log(msg):  LEC_STATUS["log"].append(msg)
 
 
 def _job():
     try:
         STATUS["error"] = None
         STATUS["result"] = pipeline.run_pipeline(log=_log)
-    except Exception as e:           # noqa: BLE001
-        STATUS["error"] = str(e)
-        _log(f"Error: {e}")
+    except Exception as e:
+        STATUS["error"] = str(e); _log(f"Error: {e}")
     finally:
         STATUS["running"] = False
 
 
+def _lec_job(path_dropbox, curso, sesion, nombre):
+    try:
+        LEC_STATUS["error"] = None
+        dbx = pipeline.get_dbx()
+        nuevas = lecturas.procesar_lectura(
+            dbx, path_dropbox, curso, sesion, nombre, log=_lec_log)
+        LEC_STATUS["result"] = {"nuevas": nuevas}
+    except Exception as e:
+        LEC_STATUS["error"] = str(e); _lec_log(f"Error: {e}")
+    finally:
+        LEC_STATUS["running"] = False
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Rutas existentes (sin cambios)
+# ══════════════════════════════════════════════════════════════════════════════
 @app.route("/")
 def index():
     resumen = pipeline.resumen_actual()
@@ -62,6 +80,83 @@ def descargar():
     if not os.path.exists(ruta):
         ruta = pipeline.reconstruir_local()
     return send_file(ruta, as_attachment=True, download_name="fadp_general.apkg")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Tracker de sesiones
+# ══════════════════════════════════════════════════════════════════════════════
+@app.route("/tracker")
+def tracker_view():
+    try:
+        dbx = pipeline.get_dbx()
+        data, tree = tracker.sincronizar_con_dropbox(dbx)
+        stats = tracker.calcular_stats(data, tree)
+        items = tracker.construir_vista(data, tree)
+    except Exception as e:
+        data, tree, stats, items = {}, {}, {}, []
+        stats = {"error": str(e), "total": 0, "concluidas": 0,
+                 "pendientes": 0, "hoy": 0, "pct": 0,
+                 "actividad_7": {}, "rezagados": []}
+    return render_template("tracker.html", stats=stats, items=items)
+
+
+@app.route("/tracker/estado", methods=["POST"])
+def tracker_estado():
+    d = request.get_json()
+    dbx = pipeline.get_dbx()
+    tracker.actualizar_estado(dbx, d["curso"], d["sesion"], d["estado"])
+    return jsonify({"ok": True})
+
+
+@app.route("/tracker/prioridad", methods=["POST"])
+def tracker_prioridad():
+    d = request.get_json()
+    dbx = pipeline.get_dbx()
+    tracker.actualizar_prioridad(dbx, d["curso"], d["sesion"], d["prioridad"])
+    return jsonify({"ok": True})
+
+
+@app.route("/tracker/preview")
+def tracker_preview():
+    path = request.args.get("path", "")
+    if not path:
+        return jsonify({"error": "sin path"}), 400
+    try:
+        dbx = pipeline.get_dbx()
+        imgs = tracker.previsualizar_pdf(dbx, path)
+        return jsonify({"imgs": imgs})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Generador de lecturas
+# ══════════════════════════════════════════════════════════════════════════════
+@app.route("/lecturas/procesar", methods=["POST"])
+def lecturas_procesar():
+    d = request.get_json()
+    with LEC_LOCK:
+        if not LEC_STATUS["running"]:
+            LEC_STATUS.update(running=True, log=[], result=None, error=None)
+            threading.Thread(
+                target=_lec_job,
+                args=(d["path"], d["curso"], d["sesion"], d["nombre"]),
+                daemon=True).start()
+    return ("", 204)
+
+
+@app.route("/lecturas/estado")
+def lecturas_estado():
+    return jsonify(LEC_STATUS)
+
+
+@app.route("/lecturas/descargar")
+def lecturas_descargar():
+    ruta = lecturas.ruta_apkg_lecturas_local()
+    if not os.path.exists(ruta):
+        dbx = pipeline.get_dbx()
+        ruta = lecturas.reconstruir_lecturas_local(dbx)
+    return send_file(ruta, as_attachment=True, download_name="fadp_lecturas.apkg")
 
 
 if __name__ == "__main__":
