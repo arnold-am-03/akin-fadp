@@ -268,7 +268,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--line);
       {% for item in items if item.estado == col_id %}
       {% set pct = item.prioridad %}
       {% set pc = "#15803d" if pct >= 70 else ("#b45309" if pct >= 40 else "#6b7280") %}
-      <div class="card" onclick="abrirModal({{ item | tojson }})"
+      <div class="card js-open"
            data-id="{{ item.id }}" data-curso="{{ item.curso }}" data-estado="{{ item.estado }}">
         <div class="card-label">{{ item.curso }} · {{ item.sesion }}</div>
         <div class="card-curso" style="font-size:11px">{{ item.curso }}</div>
@@ -286,8 +286,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--line);
   <!-- Lista -->
   <div class="list-view" id="list-view">
     {% for item in items %}
-    <div class="list-row" data-curso="{{ item.curso }}" data-estado="{{ item.estado }}"
-         onclick="abrirModal({{ item | tojson }})">
+    <div class="list-row js-open" data-id="{{ item.id }}" data-curso="{{ item.curso }}" data-estado="{{ item.estado }}">
       <div class="list-check {{ 'done' if item.estado == 'concluido' else '' }}" id="chk-{{ item.id }}">
         {% if item.estado == 'concluido' %}✓{% endif %}
       </div>
@@ -305,7 +304,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--line);
     Sesiones pendientes o en progreso, ordenadas por prioridad. Haz clic para gestionar.
   </p>
   {% for item in items if item.estado != 'concluido' %}
-  <div class="list-row" onclick="abrirModal({{ item | tojson }})">
+  <div class="list-row js-open" data-id="{{ item.id }}">
     <div class="list-check"></div>
     <span class="list-label">{{ item.curso }}</span>
     <span class="list-sesion">{{ item.sesion }}</span>
@@ -379,8 +378,18 @@ nav{background:var(--surface);border-bottom:1px solid var(--line);
 <script>
 // ── Datos ──────────────────────────────────────────────────────────────────
 const ITEMS = {{ items | tojson }};
+const ITEM_MAP = {};
+ITEMS.forEach(i => ITEM_MAP[i.id] = i);
 let current = null;
 let lecTimer = null;
+
+// Abrir el modal al hacer clic en cualquier tarjeta o fila (sin JSON en el HTML)
+document.querySelectorAll('.js-open').forEach(el => {
+  el.addEventListener('click', () => {
+    const it = ITEM_MAP[el.dataset.id];
+    if (it) abrirModal(it);
+  });
+});
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
 function switchTab(id){
