@@ -164,6 +164,28 @@ def actualizar_prioridad(dbx, curso, sesion, prioridad):
     return data
 
 
+def actualizar_sesion(dbx, curso, sesion, estado=None, prioridad=None, notas=None):
+    """Actualiza estado, prioridad y/o comentario en una sola operación."""
+    data = cargar_tracker(dbx)
+    sid = _asegurar_sesion(data, curso, sesion)
+    s = data["sesiones"][sid]
+    hoy = datetime.date.today().isoformat()
+    if estado is not None and estado != s["estado"]:
+        s["estado"] = estado
+        if estado == "concluido":
+            s["concluido_en"] = hoy
+            data["actividad"].append({"fecha": hoy, "sesion_id": sid, "accion": "concluido"})
+        elif estado == "pendiente":
+            s["concluido_en"] = None
+            data["actividad"].append({"fecha": hoy, "sesion_id": sid, "accion": "revertido"})
+    if prioridad is not None:
+        s["prioridad"] = int(prioridad)
+    if notas is not None:
+        s["notas"] = notas
+    guardar_tracker(dbx, data)
+    return data
+
+
 # --------------------------------------------------------------------------- #
 # Dashboard stats
 # --------------------------------------------------------------------------- #
@@ -171,6 +193,11 @@ def calcular_stats(data, tree):
     total = len(data["sesiones"])
     concluidas = sum(1 for s in data["sesiones"].values() if s["estado"] == "concluido")
     pendientes = total - concluidas
+
+    # conteo por estado (para la dona)
+    por_estado = {"pendiente": 0, "en_progreso": 0, "concluido": 0}
+    for s in data["sesiones"].values():
+        por_estado[s["estado"]] = por_estado.get(s["estado"], 0) + 1
 
     # sesiones concluidas hoy
     hoy = datetime.date.today().isoformat()
@@ -200,6 +227,7 @@ def calcular_stats(data, tree):
     return {
         "total": total, "concluidas": concluidas, "pendientes": pendientes,
         "hoy": hoy_count, "actividad_7": actividad_7, "rezagados": rezagados,
+        "por_estado": por_estado,
         "pct": round(concluidas / total * 100) if total else 0,
     }
 

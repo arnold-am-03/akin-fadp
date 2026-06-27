@@ -7,7 +7,7 @@ Render: una sola instancia / un worker.
 import os
 import threading
 
-from flask import Flask, render_template, jsonify, request, send_file
+from flask import Flask, render_template, jsonify, request, send_file, redirect
 
 import pipeline
 import tracker
@@ -56,8 +56,7 @@ def _lec_job(path_dropbox, curso, sesion, nombre):
 # ══════════════════════════════════════════════════════════════════════════════
 @app.route("/")
 def index():
-    resumen = pipeline.resumen_actual()
-    return render_template("index.html", r=resumen, running=STATUS["running"])
+    return redirect("/tracker")
 
 
 @app.route("/procesar", methods=["POST"])
@@ -96,8 +95,10 @@ def tracker_view():
         data, tree, stats, items = {}, {}, {}, []
         stats = {"error": str(e), "total": 0, "concluidas": 0,
                  "pendientes": 0, "hoy": 0, "pct": 0,
-                 "actividad_7": {}, "rezagados": []}
-    return render_template("tracker.html", stats=stats, items=items)
+                 "actividad_7": {}, "rezagados": [],
+                 "por_estado": {"pendiente": 0, "en_progreso": 0, "concluido": 0}}
+    mazo = pipeline.resumen_actual()
+    return render_template("tracker.html", stats=stats, items=items, mazo=mazo)
 
 
 @app.route("/tracker/estado", methods=["POST"])
@@ -113,6 +114,17 @@ def tracker_prioridad():
     d = request.get_json()
     dbx = pipeline.get_dbx()
     tracker.actualizar_prioridad(dbx, d["curso"], d["sesion"], d["prioridad"])
+    return jsonify({"ok": True})
+
+
+@app.route("/tracker/guardar", methods=["POST"])
+def tracker_guardar():
+    d = request.get_json()
+    dbx = pipeline.get_dbx()
+    tracker.actualizar_sesion(dbx, d["curso"], d["sesion"],
+                              estado=d.get("estado"),
+                              prioridad=d.get("prioridad"),
+                              notas=d.get("notas"))
     return jsonify({"ok": True})
 
 
