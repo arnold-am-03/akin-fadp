@@ -189,6 +189,41 @@ def cards_from_chunk(text, log, max_cards=CARDS_POR_BLOQUE, reintentos=4):
     return []
 
 
+def generar_con_sistema(text, system_instruction, log, max_cards=18, reintentos=4):
+    """Genera tarjetas JSON con una instrucción de sistema arbitraria (reutilizable)."""
+    cfg = types.GenerateContentConfig(
+        system_instruction=system_instruction, temperature=0.3, max_output_tokens=8192,
+        response_mime_type="application/json", response_schema=_schema)
+    prompt = (f"Extrae de forma EXHAUSTIVA hasta {max_cards} tarjetas de este "
+              f"fragmento de texto:\n\n{text}")
+    for intento in range(reintentos):
+        try:
+            resp = _client().models.generate_content(
+                model=GEMINI_MODEL, contents=prompt, config=cfg)
+            try:
+                data = json.loads((resp.text or "").strip())
+                return data if isinstance(data, list) else []
+            except json.JSONDecodeError:
+                log("  (respuesta no parseable, bloque omitido)")
+                return []
+        except genai_errors.ServerError:
+            esp = 10 * (intento + 1)
+            log(f"  Modelo saturado (503). Espero {esp}s y reintento...")
+            time.sleep(esp)
+        except genai_errors.ClientError as e:
+            if getattr(e, "code", None) == 429 and "limit: 0" in str(e):
+                raise RuntimeError(
+                    "Gemini sin cuota (limit: 0). Activa facturación o cambia de modelo.") from e
+            if getattr(e, "code", None) == 429:
+                esp = 8 * (intento + 1)
+                log(f"  Límite por minuto (429). Espero {esp}s y reintento...")
+                time.sleep(esp)
+            else:
+                raise
+    log("  Reintentos agotados; bloque omitido.")
+    return []
+
+
 # --------------------------------------------------------------------------- #
 # Dropbox + estado
 # --------------------------------------------------------------------------- #
@@ -247,11 +282,11 @@ def construir_apkg(estado, ruta):
         if c["q"] in seen:
             continue
         seen.add(c["q"])
-        name = f"{DECK_NAME}::{c['curso']}::{c['sesion']}"
+        name = f"{DECK_NAME}::{c['curso']}::{c['sesion']}::Clase"
         if name not in decks:
             decks[name] = genanki.Deck(int(hashlib.md5(name.encode()).hexdigest()[:8], 16), name)
         decks[name].add_note(GuidNote(model=model, fields=[c["q"], c["a"], c["fuente"]],
-                                      tags=[sanitize(c["curso"]), sanitize(c["sesion"])]))
+                                      tags=[sanitize(c["curso"]), sanitize(c["sesion"]), "clase"]))
     genanki.Package(list(decks.values())).write_to_file(ruta)
     return len(seen), len(decks)
 
