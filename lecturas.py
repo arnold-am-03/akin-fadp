@@ -56,8 +56,10 @@ def construir_apkg_lecturas(data, ruta):
         if c["q"] in seen:
             continue
         seen.add(c["q"])
-        rama = "Citas" if c.get("tipo") == "cita" else "Lectura"
-        name = f"FADP::{c['curso']}::{c['sesion']}::{rama} · {c['nombre']}"
+        if c.get("tipo") == "cita":
+            name = f"LECTURAS::{c['curso']}::{c['sesion']}::{c['nombre']} · Citas"
+        else:
+            name = f"LECTURAS::{c['curso']}::{c['sesion']}::{c['nombre']}"
         if name not in decks:
             decks[name] = genanki.Deck(
                 int(hashlib.md5(name.encode()).hexdigest()[:8], 16), name)

@@ -60,9 +60,7 @@ def estado():
 
 @app.route("/descargar")
 def descargar():
-    ruta = pipeline.ruta_apkg_local()
-    if not os.path.exists(ruta):
-        ruta = pipeline.reconstruir_local()
+    ruta = pipeline.reconstruir_local()
     return send_file(ruta, as_attachment=True, download_name="fadp_general.apkg")
 
 
@@ -187,9 +185,7 @@ def lecturas_estado():
 
 @app.route("/lecturas/descargar")
 def lecturas_descargar():
-    ruta = lecturas.ruta_apkg_lecturas_local()
-    if not os.path.exists(ruta):
-        ruta = lecturas.reconstruir_lecturas_local(pipeline.get_dbx())
+    ruta = lecturas.reconstruir_lecturas_local(pipeline.get_dbx())
     return send_file(ruta, as_attachment=True, download_name="fadp_lecturas.apkg")
 
 
@@ -250,10 +246,7 @@ def libros_estado():
 @app.route("/libros/descargar")
 def libros_descargar():
     nombre = request.args.get("nombre", "")
-    dbx = pipeline.get_dbx()
-    ruta = libros.ruta_apkg_local(nombre)
-    if not os.path.exists(ruta):
-        ruta = libros.reconstruir_local(dbx, nombre)
+    ruta = libros.reconstruir_local(pipeline.get_dbx(), nombre)
     return send_file(ruta, as_attachment=True, download_name=libros.apkg_nombre(nombre))
 
 

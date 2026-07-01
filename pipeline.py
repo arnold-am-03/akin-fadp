@@ -282,7 +282,7 @@ def construir_apkg(estado, ruta):
         if c["q"] in seen:
             continue
         seen.add(c["q"])
-        name = f"{DECK_NAME}::{c['curso']}::{c['sesion']}::Clase"
+        name = f"{DECK_NAME}::{c['curso']}::{c['sesion']}"
         if name not in decks:
             decks[name] = genanki.Deck(int(hashlib.md5(name.encode()).hexdigest()[:8], 16), name)
         decks[name].add_note(GuidNote(model=model, fields=[c["q"], c["a"], c["fuente"]],
